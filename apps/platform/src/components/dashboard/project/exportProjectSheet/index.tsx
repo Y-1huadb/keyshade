@@ -14,32 +14,48 @@ import { Label } from '@/components/ui/label'
 import {
     exportProjectOpenAtom,
     selectedProjectAtom,
-    projectsOfWorkspaceAtom,
-    localProjectPrivateKeyAtom, // 新增导入本地私钥atom
+    localProjectPrivateKeyAtom,
 } from '@/store'
 import ControllerInstance from '@/lib/controller-instance'
 import { useHttp } from '@/hooks/use-http'
 
+interface ExportProjectRequest {
+    projectSlug: string
+    format: string
+    privateKey?: string
+}
+
+interface ExportFileData {
+    buffer: ArrayBuffer
+    filename: string
+    contentType: string
+}
+
+
 export default function ExportProjectSheet(): JSX.Element {
     const [isExportProjectSheetOpen, setIsExportProjectSheetOpen] = useAtom(exportProjectOpenAtom)
     const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom)
-    const [projects, setProjects] = useAtom(projectsOfWorkspaceAtom)
-    const [localPrivateKeys] = useAtom(localProjectPrivateKeyAtom) // 读取本地私钥列表
+    const [localPrivateKeys] = useAtom(localProjectPrivateKeyAtom)
 
     const [isLoading, setIsLoading] = useState(false)
     const [format, setFormat] = useState('JSON')
     const [privateKey, setPrivateKey] = useState('')
 
-    // 判断当前项目是否有本地私钥
     const hasLocalPrivateKey = selectedProject
         ? localPrivateKeys.some((item) => item.slug === selectedProject.slug && item.key)
         : false
 
-    const updateProject = useHttp(() =>
-        ControllerInstance.getInstance().projectController.updateProject({
+    const exportProject = useHttp<ExportProjectRequest, {
+        success: boolean;
+        error: { message: string; error: string; statusCode: number } | null;
+        data: ExportFileData | null;
+    }>(() =>
+        ControllerInstance.getInstance().projectController.exportProject({
             projectSlug: selectedProject!.slug,
-            // format,
-            privateKey
+            format,
+            privateKey: hasLocalPrivateKey
+                ? localPrivateKeys.find((item) => item.slug === selectedProject!.slug)?.key
+                : privateKey
         })
     )
 
@@ -49,15 +65,20 @@ export default function ExportProjectSheet(): JSX.Element {
         toast.loading('Exporting project...')
 
         try {
-            const { data, success } = await updateProject()
+            const { data, success } = await exportProject()
             if (success && data) {
-                setProjects(
-                    projects.map((project) =>
-                        project.slug === selectedProject.slug
-                            ? { ...project, ...data }
-                            : project
-                    )
-                )
+                // Create a blob from the buffer
+                const blob = new Blob([data.buffer], { type: data.contentType })
+                // Create a download link
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = data.filename
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(url)
+                document.body.removeChild(a)
+
                 toast.success('Project exported successfully')
             }
         } finally {
@@ -68,9 +89,7 @@ export default function ExportProjectSheet(): JSX.Element {
         }
     }, [
         selectedProject,
-        updateProject,
-        projects,
-        setProjects,
+        exportProject,
         setIsExportProjectSheetOpen,
         setSelectedProject
     ])

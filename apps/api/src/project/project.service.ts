@@ -35,6 +35,8 @@ import { AuthenticatedUser } from '@/user/user.types'
 import { TierLimitService } from '@/common/tier-limit.service'
 import SlugGenerator from '@/common/slug-generator.service'
 import { decrypt, encrypt } from '@keyshade/common'
+import { ExportProject } from './dto/export.project/export.project'
+import { ExportFormat } from '@prisma/client'
 
 @Injectable()
 export class ProjectService {
@@ -467,6 +469,112 @@ export class ProjectService {
       ...updatedProject,
       privateKey,
       publicKey
+    }
+  }
+
+  /**
+   * Exports a project's configuration in the specified format
+   *
+   * @param user The user who is exporting the project
+   * @param projectSlug The slug of the project to export
+   * @param dto The export configuration
+   * @returns The exported project data in JSON format, or throws an error for invalid format
+   */
+  async exportProject(
+    user: AuthenticatedUser,
+    projectSlug: Project['slug'],
+    dto: ExportProject
+  ) {
+    this.logger.log(
+      `User ${user.id} attempted to export project ${projectSlug}`
+    )
+
+    // Check if the project exists and user has access
+    const project =
+      await this.authorizationService.authorizeUserAccessToProject({
+        user,
+        entity: { slug: projectSlug },
+        authorities: [
+          Authority.READ_PROJECT,
+          Authority.READ_SECRET,
+          Authority.READ_VARIABLE,
+          Authority.READ_ENVIRONMENT
+        ]
+      })
+
+    // Get all project data including environments, secrets, and variables
+    const projectData = await this.prisma.project.findUnique({
+      where: { id: project.id },
+      include: {
+        environments: {
+          select: {
+            name: true,
+            description: true,
+            slug: true,
+            secretVersions: {
+              select: {
+                value: true,
+                version: true,
+                secret: {
+                  select: {
+                    name: true,
+                    slug: true,
+                    note: true,
+                    rotateAt: true
+                  }
+                }
+              }
+            },
+            variableVersions: {
+              select: {
+                value: true,
+                version: true,
+                variable: {
+                  select: {
+                    name: true,
+                    slug: true,
+                    note: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // If project stores private key or private key is provided in dto, decrypt secrets
+    if (project.storePrivateKey || dto.privateKey) {
+      const privateKey = project.storePrivateKey
+        ? project.privateKey
+        : dto.privateKey
+      for (const env of projectData.environments) {
+        for (const secretVersion of env.secretVersions) {
+          try {
+            secretVersion.value = await decrypt(privateKey, secretVersion.value)
+          } catch (error) {
+            this.logger.error(
+              `Failed to decrypt secret in environment ${env.name}`
+            )
+            throw new BadRequestException('Invalid private key provided')
+          }
+        }
+      }
+    }
+
+    // Format the data according to the requested format
+    if (dto.format === ExportFormat.JSON) {
+      const jsonContent = JSON.stringify(projectData, null, 2)
+      const buffer = Buffer.from(jsonContent)
+      return {
+        buffer,
+        filename: `${project.name}-export.json`,
+        contentType: 'application/json'
+      }
+    } else {
+      throw new BadRequestException(
+        'Unsupported export format. Only JSON format is supported.'
+      )
     }
   }
 

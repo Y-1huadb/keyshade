@@ -150,6 +150,12 @@ enum ProjectAccessLevel {
   PRIVATE
 }
 
+enum ExportFormat {
+  JSON
+  YAML
+  ENV
+}
+
 model Event {
   id          String         @id @default(cuid())
   source      EventSource

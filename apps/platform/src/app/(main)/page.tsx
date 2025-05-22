@@ -17,7 +17,7 @@ import {
   globalSearchDataAtom
 } from '@/store'
 import EditProjectSheet from '@/components/dashboard/project/editProjectSheet'
-import ExportSecretsAndVariablesSheet from '@/components/dashboard/project/exportSecretsAndVariablesSheet'
+import ExportProjectSheet from '@/components/dashboard/project/exportProjectSheet'
 import { Button } from '@/components/ui/button'
 import ConfirmDeleteProject from '@/components/dashboard/project/confirmDeleteProject'
 import { useHttp } from '@/hooks/use-http'
@@ -148,7 +148,7 @@ export default function Index(): React.JSX.Element {
       {isDeleteProjectOpen && selectedProject ? <ConfirmDeleteProject /> : null}
 
       <EditProjectSheet />
-      <ExportSecretsAndVariablesSheet />
+      <ExportProjectSheet />
     </div>
   )
 }
