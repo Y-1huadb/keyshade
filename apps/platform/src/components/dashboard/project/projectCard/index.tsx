@@ -24,6 +24,7 @@ import {
 import {
   deleteProjectOpenAtom,
   editProjectOpenAtom,
+  exportProjectOpenAtom,
   selectedProjectAtom,
   selectedWorkspaceAtom
 } from '@/store'
@@ -48,6 +49,7 @@ export default function ProjectCard({
   } = project
 
   const setIsEditProjectSheetOpen = useSetAtom(editProjectOpenAtom)
+  const setIsExportProjectSheetOpen = useSetAtom(exportProjectOpenAtom)
   const setIsDeleteProjectOpen = useSetAtom(deleteProjectOpenAtom)
   const setSelectedProject = useSetAtom(selectedProjectAtom)
   const selectedWorkspace = useAtomValue(selectedWorkspaceAtom)
@@ -65,6 +67,11 @@ export default function ProjectCard({
   const handleEditProject = () => {
     setSelectedProject(project)
     setIsEditProjectSheetOpen(true)
+  }
+
+  const handleExportProject = () => {
+    setSelectedProject(project)
+    setIsExportProjectSheetOpen(true)
   }
 
   const handleDeleteProject = () => {
@@ -150,6 +157,9 @@ export default function ProjectCard({
         <ContextMenuSeparator className="bg-white/15" />
         <ContextMenuItem inset onClick={handleEditProject}>
           Edit
+        </ContextMenuItem>
+        <ContextMenuItem inset onClick={handleExportProject}>
+          Export
         </ContextMenuItem>
         <ContextMenuItem inset onClick={handleDeleteProject}>
           Delete

@@ -12,6 +12,7 @@ import { ProjectService } from './project.service'
 import { CurrentUser } from '@/decorators/user.decorator'
 import { Authority, Project, Workspace } from '@prisma/client'
 import { CreateProject } from './dto/create.project/create.project'
+import { ExportProject } from './dto/export.project/export.project'
 import { UpdateProject } from './dto/update.project/update.project'
 import { RequiredApiKeyAuthorities } from '@/decorators/required-api-key-authorities.decorator'
 import { ForkProject } from './dto/fork.project/fork.project'
@@ -29,6 +30,16 @@ export class ProjectController {
     @Body() dto: CreateProject
   ) {
     return await this.service.createProject(user, workspaceSlug, dto)
+  }
+
+  @Post(':projectSlug')
+  @RequiredApiKeyAuthorities(Authority.ExportProject)
+  async exportProject(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('projectSlug') projectSlug: Project['slug'],
+    @Body() dto: ExportProject
+  ) {
+    return await this.service.createProject(user, projectSlug, dto)
   }
 
   @Put(':projectSlug')

@@ -34,6 +34,7 @@ import {
 } from '@/common/util'
 import { AuthenticatedUser } from '@/user/user.types'
 import { TierLimitService } from '@/common/tier-limit.service'
+import { ExportProject } from './dto/export.project/export.project'
 
 @Injectable()
 export class ProjectService {
@@ -253,6 +254,40 @@ export class ProjectService {
       ...newProject,
       ...(await this.parseProjectItemLimits(newProject.id))
     }
+  }
+
+  /**
+   * Exports a project.
+   *
+   * @param user The user who is exporting the project
+   * @param projectSlug The slug of the project to export
+   * @param dto The data to export the project with
+   * @returns The exported files
+   *
+   * @throws ConflictException If a project with the same name already exists for the user
+   * @throws BadRequestException If the private key is required but not supplied
+   */
+  async exportProject(
+    user: AuthenticatedUser,
+    projectSlug: Project['slug'],
+    dto: ExportProject
+  ) {
+    this.logger.log(
+      `User ${user.id} attempted to export project ${projectSlug}`
+    )
+
+    // Check if the user has the authority to export the project
+    // let authority: Authority = Authority.EXPORT_PROJECT
+    const authority: Authority = Authority.UPDATE_PROJECT
+    this.logger.log(`Checking if user has authority to update project`)
+    const project =
+      await this.authorizationService.authorizeUserAccessToProject({
+        user,
+        entity: { slug: projectSlug },
+        authorities: [authority]
+      })
+
+    dto.name && (await this.projectExists(dto.name, project.workspaceId))
   }
 
   /**
