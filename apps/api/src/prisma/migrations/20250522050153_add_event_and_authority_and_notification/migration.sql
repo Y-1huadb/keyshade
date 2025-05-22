@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "Authority" ADD VALUE 'EXPORT_PROJECT';
+
+-- AlterEnum
+ALTER TYPE "EventType" ADD VALUE 'PROJECT_EXPORTED';
+
+-- AlterEnum
+ALTER TYPE "NotificationType" ADD VALUE 'PROJECT_EXPORTED';
